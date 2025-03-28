@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gesture-Based Video Player</title>
+    <style>
+        body {
+            margin: 0;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .video-container {
+            position: relative;
+            width: 90%;
+            max-width: 800px;
+        }
+        video {
+            width: 100%;
+            display: block;
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .gesture-area {
+            flex: 1;
+            display: flex;
+        }
+        .left, .right, .middle {
+            flex: 1;
+            height: 100%;
+        }
+        .top-right {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+        }
+        .notification {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="video-container">
+        <video id="videoPlayer" controls>
+            <source src="video.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div class="overlay">
+            <div class="gesture-area">
+                <div class="left" data-action="left"></div>
+                <div class="middle" data-action="middle"></div>
+                <div class="right" data-action="right"></div>
+            </div>
+            <div class="top-right" data-action="top-right"></div>
+        </div>
+        <div class="notification" id="notification">Notification</div>
+    </div>
+
+    <script>
+        const video = document.getElementById("videoPlayer");
+        const notification = document.getElementById("notification");
+        let tapCount = 0;
+        let tapTimeout;
+        let holdTimeout;
+        
+        document.querySelector(".overlay").addEventListener("click", (e) => {
+            const action = e.target.dataset.action;
+
+            tapCount++;
+            clearTimeout(tapTimeout);
+            tapTimeout = setTimeout(() => { tapCount = 0; }, 500);
+
+            if (action === "middle") {
+                if (tapCount === 1) {
+                    video.paused ? video.play() : video.pause();
+                } else if (tapCount === 3) {
+                    alert("Next video playing...");
+                    video.src = "next-video.mp4";  // Load next video
+                    video.play();
+                }
+            } else if (action === "left") {
+                if (tapCount === 2) {
+                    video.currentTime = Math.max(0, video.currentTime - 10);
+                } else if (tapCount === 3) {
+                    alert("Showing comments...");
+                }
+            } else if (action === "right") {
+                if (tapCount === 2) {
+                    video.currentTime = Math.min(video.duration, video.currentTime + 10);
+                } else if (tapCount === 3) {
+                    window.close();  // Close the website
+                }
+            } else if (action === "top-right") {
+                showLocationAndWeather();
+            }
+        });
+
+        document.querySelector(".overlay").addEventListener("mousedown", (e) => {
+            const action = e.target.dataset.action;
+            if (action === "right") {
+                video.playbackRate = 2.0;
+                holdTimeout = setTimeout(() => {}, 1000);
+            } else if (action === "left") {
+                video.playbackRate = 0.5;
+                holdTimeout = setTimeout(() => {}, 1000);
+            }
+        });
+
+        document.querySelector(".overlay").addEventListener("mouseup", () => {
+            clearTimeout(holdTimeout);
+            video.playbackRate = 1.0;
+        });
+
+        async function showLocationAndWeather() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    const apiKey = "YOUR_OPENWEATHER_API_KEY";
+                    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+
+                    try {
+                        const response = await fetch(url);
+                        const data = await response.json();
+                        const temp = data.main.temp;
+                        const location = data.name;
+                        showNotification(`📍 ${location} | 🌡 ${temp}°C`);
+                    } catch (error) {
+                        showNotification("Error fetching weather data.");
+                    }
+                });
+            } else {
+                showNotification("Geolocation not supported.");
+            }
+        }
+
+        function showNotification(message) {
+            notification.innerText = message;
+            notification.style.display = "block";
+            setTimeout(() => { notification.style.display = "none"; }, 3000);
+        }
+    </script>
+
+</body>
+</html>
